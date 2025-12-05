@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NumeraPro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/utif@2.0.1/UTIF.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-slate-900 text-slate-100 h-screen overflow-hidden flex flex-col">
+
+    <!-- Header -->
+    <header class="h-16 border-b border-slate-700 bg-slate-800/50 flex items-center px-6 justify-between shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center shadow-lg shadow-brand-500/20">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path>
+                </svg>
+            </div>
+            <h1 class="text-xl font-bold tracking-tight text-white">Numera<span class="text-brand-500">Pro</span>
+            </h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <input type="file" id="projectFileInput" class="hidden" accept=".npro,.json">
+            <button id="loadProjectBtn"
+                class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg font-medium transition-all border border-slate-700 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                Cargar
+            </button>
+            <button id="saveProjectBtn"
+                class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg font-medium transition-all border border-slate-700 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
+                    </path>
+                </svg>
+                Guardar
+            </button>
+            <div class="h-6 w-px bg-slate-700 mx-1"></div>
+            <button id="generateBtn"
+                class="bg-brand-600 hover:bg-brand-500 text-white px-6 py-2 rounded-lg font-medium transition-all shadow-lg shadow-brand-500/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                Generar PDF
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex overflow-hidden">
+
+        <!-- Sidebar Configuration -->
+        <aside class="w-96 bg-slate-800/30 border-r border-slate-700 overflow-y-auto p-6 flex flex-col gap-8 shrink-0">
+
+            <!-- Section: File Upload -->
+            <section>
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">1.
+                    Archivo de Diseño</h3>
+                <div id="dropZone"
+                    class="border-2 border-dashed border-slate-600 rounded-xl p-8 text-center hover:border-brand-500 hover:bg-slate-800/50 transition-all cursor-pointer group">
+                    <input type="file" id="fileInput" class="hidden" accept="image/*,application/pdf,.tif,.tiff">
+                    <div
+                        class="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-brand-500/20 group-hover:text-brand-500 transition-colors">
+                        <svg class="w-6 h-6 text-slate-400 group-hover:text-brand-500" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                            </path>
+                        </svg>
+                    </div>
+                    <p class="text-sm text-slate-300 font-medium">Click o arrastra tu archivo aquí</p>
+                    <p class="text-xs text-slate-500 mt-1">Soporta PDF, JPG, PNG, TIFF</p>
+                    <p id="fileName" class="text-xs text-brand-400 mt-2 font-mono hidden"></p>
+                </div>
+            </section>
+
+            <!-- Section: Design & Layout -->
+            <section>
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">2.
+                    Configuración de
+                    Diseño y Pliego</h3>
+                <div class="space-y-4">
+                    <!-- Paper Size -->
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Tamaño de Papel</label>
+                        <div class="flex gap-2">
+                            <select id="paperSize"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none">
+                                <option value="a4">A4 (210 x 297 mm)</option>
+                                <option value="a3">A3 (297 x 420 mm)</option>
+                                <option value="sra3">SRA3 (320 x 450 mm)</option>
+                                <option value="13x19">13x19" (330 x 483 mm)</option>
+                                <option value="custom">Personalizado</option>
+                            </select>
+                            <button id="orientationBtn"
+                                class="bg-slate-800 border border-slate-700 rounded-lg px-3 hover:bg-slate-700 text-slate-400 hover:text-brand-500 transition-colors"
+                                title="Cambiar Orientación">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="customSizeInputs" class="grid grid-cols-2 gap-3 hidden">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Ancho Papel (mm)</label>
+                            <input type="number" id="paperWidth" value="210"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Alto Papel (mm)</label>
+                            <input type="number" id="paperHeight" value="297"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Design Size -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Ancho Diseño (mm)</label>
+                            <input type="number" id="designWidth" value="90"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Alto Diseño (mm)</label>
+                            <input type="number" id="designHeight" value="50"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                    </div>
+
+                    <button id="resetDesignSizeBtn"
+                        class="w-full text-xs text-brand-400 hover:text-brand-300 flex items-center justify-center gap-1 hidden">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                            </path>
+                        </svg>
+                        Restaurar tamaño original detectado
+                    </button>
+
+                    <!-- Grid Config -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Filas</label>
+                            <input type="number" id="gridRows" value="5"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Columnas</label>
+                            <input type="number" id="gridCols" value="2"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Margen (mm)</label>
+                            <input type="number" id="gridMargin" value="5"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="text-xs text-slate-500 flex justify-between">
+                        <span id="maxGridInfo">Max: 0 x 0</span>
+                        <button id="autoLayoutBtn" class="text-brand-400 hover:text-brand-300">Auto-ajustar</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section: Numbering -->
+            <section>
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">3.
+                    Numeración</h3>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Inicio</label>
+                            <input type="number" id="numStart" value="1"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Total Tickets</label>
+                            <input type="number" id="numTotal" value="100"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Prefijo</label>
+                            <input type="text" id="numPrefix" placeholder="N° "
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Relleno (Ceros)</label>
+                            <input type="number" id="numPadding" value="4"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Color</label>
+                            <div
+                                class="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1">
+                                <input type="color" id="numColor" value="#ff0000"
+                                    class="bg-transparent border-none w-6 h-6 cursor-pointer">
+                                <span id="numColorHex" class="text-xs text-slate-300">#ff0000</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Tamaño Fuente (pt)</label>
+                            <input type="number" id="numFontSize" value="12"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Font Selection -->
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Tipografía</label>
+                        <select id="numFont"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                            <option value="Helvetica">Helvetica (Estándar)</option>
+                            <option value="Times">Times New Roman (Serif)</option>
+                            <option value="Courier">Courier (Monospacio)</option>
+                        </select>
+                    </div>
+
+                    <!-- Position -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                        <label class="block text-xs text-slate-400 mb-2 font-medium">Posición (desde
+                            esquina
+                            sup-der)</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-1">Margen X
+                                    (mm)</label>
+                                <input type="number" id="numPosX" value="10"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-1">Margen Y
+                                    (mm)</label>
+                                <input type="number" id="numPosY" value="5"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="numVertical"
+                                    class="rounded bg-slate-900 border-slate-700 text-brand-500 focus:ring-brand-500">
+                                <span class="text-xs text-slate-300">Orientación Vertical</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Numbering -->
+                    <div class="space-y-3 pt-2 border-t border-slate-700">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="numDouble"
+                                class="rounded bg-slate-900 border-slate-700 text-brand-500 focus:ring-brand-500">
+                            <span class="text-xs text-slate-300">Numeración Doble (Matriz)</span>
+                        </label>
+
+                        <div id="doubleNumConfig" class="hidden pl-4 border-l-2 border-slate-700 space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-1">Matriz X
+                                        (mm)</label>
+                                    <input type="number" id="numMatrixX" value="50"
+                                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-1">Matriz Y
+                                        (mm)</label>
+                                    <input type="number" id="numMatrixY" value="5"
+                                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Items por
+                                    Ticket</label>
+                                <input type="number" id="itemsPerTicket" value="1" min="1"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Espaciado Items
+                                    (mm)</label>
+                                <input type="number" id="itemsSpacing" value="5"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- PDF Correction & Max Sheets -->
+                        <div class="pt-2 border-t border-slate-700">
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">Límite Pliegos
+                                        (Taco)</label>
+                                    <input type="number" id="numMaxSheets" placeholder="Opcional"
+                                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">Corrección Vertical
+                                        PDF</label>
+                                    <input type="number" id="pdfCorrectionY" value="0" step="0.1"
+                                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="numFill" checked
+                                        class="rounded bg-slate-900 border-slate-700 text-brand-500 focus:ring-brand-500">
+                                    <span class="text-xs text-slate-300">Rellenar huecos sobrantes
+                                        (hasta fin de
+                                        pliego)</span>
+                                </label>
+                            </div>
+                            <p class="text-[10px] text-slate-500">Si se desactiva "Rellenar", los huecos
+                                sobrantes
+                                quedarán vacíos (recomendado para guillotina).</p>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Info Footer -->
+            <div class="mt-auto pt-6 border-t border-slate-700 text-xs text-slate-500">
+                <div class="flex justify-between mb-1">
+                    <span>Etiquetas por pliego:</span>
+                    <span id="itemsPerSheetInfo" class="text-slate-300">10</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Total estimado:</span>
+                    <span id="sheetCountInfo" class="text-slate-300">10 pliegos</span>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Preview Area -->
+        <div class="flex-1 bg-slate-950 p-8 flex flex-col items-center justify-center overflow-hidden relative">
+            <div
+                class="absolute top-4 right-4 bg-slate-800/80 backdrop-blur px-3 py-1 rounded-full text-xs text-slate-400 border border-slate-700">
+                Vista Previa
+            </div>
+
+            <div id="canvasContainer" class="w-full h-full flex items-center justify-center overflow-auto">
+                <canvas id="previewCanvas"
+                    class="shadow-2xl shadow-black/50 bg-white transition-all duration-300"></canvas>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- STATE MANAGEMENT ---
+        const state = {
+            file: null,
+            fileData: null,
+            fileType: null, // 'image' | 'pdf'
+            previewImage: null, // Image object for canvas preview
+            detectedSize: { width: 0, height: 0 }, // Store detected size for reset
+            paper: {
+                size: 'a4', // a4, a3, sra3, custom
+                width: 210,
+                height: 297,
+                orientation: 'portrait'
+            },
+            design: {
+                width: 90,
+                height: 50
+            },
+            grid: {
+                rows: 5,
+                cols: 2,
+                margin: 5
+            },
+            numbering: {
+                start: 1,
+                total: 100,
+                prefix: '',
+                padding: 4,
+                color: '#ff0000',
+                fontSize: 12,
+                font: 'Helvetica', // Default
+                posX: 10,
+                posY: 5,
+                vertical: false,
+                double: false,
+                matrixX: 50,
+                matrixY: 5,
+                itemsPerTicket: 1,
+                spacing: 5,
+                pdfCorrectionY: 0,
+                maxSheets: 0, // 0 means no limit
+                fill: true
+            }
+        };
+
+        // --- DOM ELEMENTS ---
+        const els = {
+            dropZone: document.getElementById('dropZone'),
+            fileInput: document.getElementById('fileInput'),
+            fileName: document.getElementById('fileName'),
+            paperSize: document.getElementById('paperSize'),
+
+            orientationBtn: document.getElementById('orientationBtn'),
+            customSizeInputs: document.getElementById('customSizeInputs'),
+            paperWidth: document.getElementById('paperWidth'),
+            paperHeight: document.getElementById('paperHeight'),
+            designWidth: document.getElementById('designWidth'),
+            designHeight: document.getElementById('designHeight'),
+            resetDesignSizeBtn: document.getElementById('resetDesignSizeBtn'),
+            gridRows: document.getElementById('gridRows'),
+            gridCols: document.getElementById('gridCols'),
+            gridMargin: document.getElementById('gridMargin'),
+            maxGridInfo: document.getElementById('maxGridInfo'),
+            autoLayoutBtn: document.getElementById('autoLayoutBtn'),
+            numStart: document.getElementById('numStart'),
+            numTotal: document.getElementById('numTotal'),
+            numPrefix: document.getElementById('numPrefix'),
+            numPadding: document.getElementById('numPadding'),
+            numColor: document.getElementById('numColor'),
+            numColorHex: document.getElementById('numColorHex'),
+            numFontSize: document.getElementById('numFontSize'),
+            numFont: document.getElementById('numFont'),
+            numPosX: document.getElementById('numPosX'),
+            numPosY: document.getElementById('numPosY'),
+            numVertical: document.getElementById('numVertical'),
+            numDouble: document.getElementById('numDouble'),
+            doubleNumConfig: document.getElementById('doubleNumConfig'),
+            numMatrixX: document.getElementById('numMatrixX'),
+            numMatrixY: document.getElementById('numMatrixY'),
+            itemsPerTicket: document.getElementById('itemsPerTicket'),
+            itemsSpacing: document.getElementById('itemsSpacing'),
+
+            pdfCorrectionY: document.getElementById('pdfCorrectionY'),
+            numMaxSheets: document.getElementById('numMaxSheets'),
+            numFill: document.getElementById('numFill'),
+            itemsPerSheetInfo: document.getElementById('itemsPerSheetInfo'),
+            sheetCountInfo: document.getElementById('sheetCountInfo'),
+            previewCanvas: document.getElementById('previewCanvas'),
+            generateBtn: document.getElementById('generateBtn'),
+            saveProjectBtn: document.getElementById('saveProjectBtn'),
+            loadProjectBtn: document.getElementById('loadProjectBtn'),
+            projectFileInput: document.getElementById('projectFileInput')
+        };
+
+        // --- INITIALIZATION ---
+        function init() {
+            // Project Management
+            els.saveProjectBtn.addEventListener('click', saveProject);
+            els.loadProjectBtn.addEventListener('click', () => els.projectFileInput.click());
+            els.projectFileInput.addEventListener('change', (e) => loadProject(e.target.files[0]));
+
+            // File Upload
+            els.dropZone.addEventListener('click', () => els.fileInput.click());
+            els.dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                els.dropZone.classList.add('border-brand-500', 'bg-slate-800/50');
+            });
+            els.dropZone.addEventListener('dragleave', () => {
+                els.dropZone.classList.remove('border-brand-500', 'bg-slate-800/50');
+            });
+            els.dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                els.dropZone.classList.remove('border-brand-500', 'bg-slate-800/50');
+                handleFile(e.dataTransfer.files[0]);
+            });
+            els.fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+            // Paper Config
+            els.paperSize.addEventListener('change', updatePaperSize);
+            els.orientationBtn.addEventListener('click', toggleOrientation);
+            els.paperWidth.addEventListener('input', updateState);
+            els.paperHeight.addEventListener('input', updateState);
+
+            // Design Config
+            els.designWidth.addEventListener('input', updateState);
+            els.designHeight.addEventListener('input', updateState);
+            els.resetDesignSizeBtn.addEventListener('click', resetDesignSize);
+
+            // Grid Config
+            els.gridRows.addEventListener('input', updateState);
+            els.gridCols.addEventListener('input', updateState);
+            els.gridMargin.addEventListener('input', updateState);
+            els.autoLayoutBtn.addEventListener('click', autoLayout);
+
+            // Numbering Config
+            els.numStart.addEventListener('input', updateState);
+            els.numTotal.addEventListener('input', updateState);
+            els.numPrefix.addEventListener('input', updateState);
+            els.numPadding.addEventListener('input', updateState);
+            els.numColor.addEventListener('input', (e) => {
+                els.numColorHex.textContent = e.target.value;
+                updateState();
+            });
+            els.numFontSize.addEventListener('input', updateState);
+            els.numFont.addEventListener('change', updateState);
+            els.numPosX.addEventListener('input', updateState);
+            els.numPosY.addEventListener('input', updateState);
+            els.numVertical.addEventListener('change', updateState);
+            els.numDouble.addEventListener('change', (e) => {
+                els.doubleNumConfig.classList.toggle('hidden', !e.target.checked);
+                updateState();
+            });
+            els.numMatrixX.addEventListener('input', updateState);
+            els.numMatrixY.addEventListener('input', updateState);
+            els.itemsPerTicket.addEventListener('input', updateState);
+            els.itemsSpacing.addEventListener('input', updateState);
+            els.pdfCorrectionY.addEventListener('input', updateState);
+            els.numMaxSheets.addEventListener('input', updateState);
+            els.numFill.addEventListener('change', updateState);
+
+            // Generate
+            els.generateBtn.addEventListener('click', generatePDF);
+
+            // Resize Observer for Canvas
+            new ResizeObserver(renderPreview).observe(document.getElementById('canvasContainer'));
+
+            // Initial Update
+            updatePaperSize();
+            updateState();
+        }
+
+        // --- LOGIC ---
+
+        function handleFile(file) {
+            if (!file) return;
+
+            state.file = file;
+            state.previewImage = null; // Reset preview
+            els.fileName.textContent = file.name;
+            els.fileName.classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                state.fileData = e.target.result;
+
+                if (file.type === 'application/pdf') {
+                    state.fileType = 'pdf';
+                    // Pass copies to avoid detaching the main buffer (PDF.js worker might detach it)
+                    await detectPdfSize(state.fileData.slice(0));
+                    await generatePdfPreview(state.fileData.slice(0));
+                } else {
+                    // Handle Images (including TIFF)
+                    processImageBuffer(state.fileData, file.type);
+                }
+            };
+
+            if (file.type === 'application/pdf') {
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.readAsArrayBuffer(file); // Read as ArrayBuffer for TIFF check, then convert if needed
+            }
+        }
+
+
+        function saveProject() {
+            const projectData = {
+                state: {
+                    ...state,
+                    file: null, // Don't save the file object itself
+                    previewImage: null // Don't save the image object
+                },
+                fileData: state.fileData ? arrayBufferToBase64(state.fileData) : null,
+                fileName: state.file ? state.file.name : 'sin-titulo',
+                fileType: state.fileType
+            };
+
+            const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `proyecto-numerapro-${new Date().toISOString().slice(0, 10)}.npro`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadProject(file) {
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const projectData = JSON.parse(e.target.result);
+
+                    // Restore State
+                    Object.assign(state, projectData.state);
+
+                    // Restore File Data
+                    if (projectData.fileData) {
+                        state.fileData = base64ToArrayBuffer(projectData.fileData);
+                        state.fileType = projectData.fileType;
+
+                        // Mock file object
+                        state.file = { name: projectData.fileName };
+                        els.fileName.textContent = projectData.fileName;
+                        els.fileName.classList.remove('hidden');
+
+                        if (state.fileType === 'pdf') {
+                            await detectPdfSize(state.fileData.slice(0));
+                            await generatePdfPreview(state.fileData.slice(0));
+                        } else {
+                            // It might be an image, we need to re-process or just load
+                            // If it was saved as image, fileData is likely ArrayBuffer of the original file
+                            // But if it was converted to PNG dataURL in processImageBuffer, we need to handle that.
+                            // Actually, processImageBuffer converts to DataURL string for state.fileData if it was TIFF.
+                            // But if it was JPG/PNG, state.fileData is ArrayBuffer.
+
+                            // Let's check if it's a string (DataURL) or ArrayBuffer
+                            if (typeof state.fileData === 'string') {
+                                loadImage(state.fileData);
+                            } else {
+                                // It's ArrayBuffer, convert to Blob then DataURL
+                                const blob = new Blob([state.fileData]);
+                                const urlReader = new FileReader();
+                                urlReader.onload = (evt) => {
+                                    loadImage(evt.target.result);
+                                };
+                                urlReader.readAsDataURL(blob);
+                            }
+                        }
+                    }
+
+                    // Restore UI Elements
+                    els.paperSize.value = state.paper.size;
+                    els.paperWidth.value = state.paper.width;
+                    els.paperHeight.value = state.paper.height;
+                    if (state.paper.size === 'custom') {
+                        els.customSizeInputs.classList.remove('hidden');
+                    } else {
+                        els.customSizeInputs.classList.add('hidden');
+                    }
+
+                    els.designWidth.value = state.design.width;
+                    els.designHeight.value = state.design.height;
+
+                    els.gridRows.value = state.grid.rows;
+                    els.gridCols.value = state.grid.cols;
+                    els.gridMargin.value = state.grid.margin;
+
+                    els.numStart.value = state.numbering.start;
+                    els.numTotal.value = state.numbering.total;
+                    els.numPrefix.value = state.numbering.prefix;
+                    els.numPadding.value = state.numbering.padding;
+                    els.numColor.value = state.numbering.color;
+                    els.numColorHex.textContent = state.numbering.color;
+                    els.numFontSize.value = state.numbering.fontSize;
+                    els.numFont.value = state.numbering.font;
+                    els.numPosX.value = state.numbering.posX;
+                    els.numPosY.value = state.numbering.posY;
+                    els.numVertical.checked = state.numbering.vertical;
+
+                    els.numDouble.checked = state.numbering.double;
+                    els.doubleNumConfig.classList.toggle('hidden', !state.numbering.double);
+                    els.numMatrixX.value = state.numbering.matrixX;
+                    els.numMatrixY.value = state.numbering.matrixY;
+
+                    els.itemsPerTicket.value = state.numbering.itemsPerTicket;
+                    els.itemsSpacing.value = state.numbering.spacing;
+                    els.pdfCorrectionY.value = state.numbering.pdfCorrectionY;
+                    els.numMaxSheets.value = state.numbering.maxSheets;
+                    els.numFill.checked = state.numbering.fill;
+
+                    updateState();
+
+                } catch (err) {
+                    console.error("Error loading project:", err);
+                    alert("Error al cargar el proyecto. Archivo inválido.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Helpers for ArrayBuffer <-> Base64
+        function arrayBufferToBase64(buffer) {
+            if (typeof buffer === 'string') return buffer; // Already DataURL
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+
+        function base64ToArrayBuffer(base64) {
+            if (base64.startsWith('data:')) return base64; // Return DataURL string as is
+            const binary_string = window.atob(base64);
+            const len = binary_string.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary_string.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function processImageBuffer(buffer, fileType) {
+            // Check for TIFF
+            if (fileType === 'image/tiff' || fileType === 'image/tif') {
+                try {
+                    const ifds = UTIF.decode(buffer);
+                    UTIF.decodeImage(buffer, ifds[0]);
+                    const rgba = UTIF.toRGBA8(ifds[0]);
+                    const width = ifds[0].width;
+                    const height = ifds[0].height;
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    const imgData = ctx.createImageData(width, height);
+                    imgData.data.set(rgba);
+                    ctx.putImageData(imgData, 0, 0);
+
+                    // Convert to PNG Data URL for standard handling
+                    state.fileData = canvas.toDataURL('image/png');
+                    state.fileType = 'image'; // Treat as standard image now
+
+                    loadImage(state.fileData);
+
+                } catch (e) {
+                    console.error("Error processing TIFF", e);
+                    alert("Error al procesar archivo TIFF.");
+                }
+            } else {
+                // Standard Image (JPG/PNG)
+                // Convert Buffer to Blob to DataURL
+                const blob = new Blob([buffer], { type: fileType });
+                const urlReader = new FileReader();
+                urlReader.onload = (e) => {
+                    state.fileData = e.target.result;
+                    state.fileType = 'image';
+                    loadImage(state.fileData);
+                };
+                urlReader.readAsDataURL(blob);
+            }
+        }
+
+        function loadImage(src) {
+            const img = new Image();
+            img.onload = () => {
+                const mmWidth = (img.width / 300) * 25.4;
+                const mmHeight = (img.height / 300) * 25.4;
+
+                state.detectedSize = {
+                    width: parseFloat(mmWidth.toFixed(1)),
+                    height: parseFloat(mmHeight.toFixed(1))
+                };
+
+                state.previewImage = img; // Set for preview
+
+                // Update UI
+                els.designWidth.value = state.detectedSize.width;
+                els.designHeight.value = state.detectedSize.height;
+                els.resetDesignSizeBtn.classList.remove('hidden');
+
+                autoLayout();
+                renderPreview();
+            };
+            img.src = src;
+        }
+
+        async function generatePdfPreview(arrayBuffer) {
+            try {
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                const pdf = await loadingTask.promise;
+                const page = await pdf.getPage(1);
+
+                const scale = 2; // High quality preview
+                const viewport = page.getViewport({ scale: scale });
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+
+                await page.render(renderContext).promise;
+
+                const img = new Image();
+                img.onload = () => {
+                    state.previewImage = img;
+                    renderPreview();
+                };
+                img.src = canvas.toDataURL();
+
+            } catch (e) {
+                console.error("Error generating PDF preview", e);
+            }
+        }
+
+        async function detectPdfSize(arrayBuffer) {
+            try {
+                const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+                const page = pdfDoc.getPages()[0];
+                const { width, height } = page.getSize();
+
+                // Convert Points to MM (1 pt = 1/72 inch, 1 inch = 25.4 mm) -> 1 pt = 0.352778 mm
+                const mmWidth = width * 0.352778;
+                const mmHeight = height * 0.352778;
+
+                state.detectedSize = {
+                    width: parseFloat(mmWidth.toFixed(1)),
+                    height: parseFloat(mmHeight.toFixed(1))
+                };
+
+                els.designWidth.value = state.detectedSize.width;
+                els.designHeight.value = state.detectedSize.height;
+                els.resetDesignSizeBtn.classList.remove('hidden');
+
+                autoLayout();
+
+            } catch (e) {
+                console.error("Error detecting PDF size", e);
+            }
+        }
+
+        function resetDesignSize() {
+            if (state.detectedSize.width > 0) {
+                els.designWidth.value = state.detectedSize.width;
+                els.designHeight.value = state.detectedSize.height;
+                updateState();
+            }
+        }
+
+        function updatePaperSize() {
+            const val = els.paperSize.value;
+            state.paper.size = val;
+
+            if (val === 'custom') {
+                els.customSizeInputs.classList.remove('hidden');
+            } else {
+                els.customSizeInputs.classList.add('hidden');
+                let w = 210, h = 297;
+                if (val === 'a4') { w = 210; h = 297; }
+                if (val === 'a3') { w = 297; h = 420; }
+                if (val === 'sra3') { w = 320; h = 450; }
+                if (val === '13x19') { w = 330; h = 483; }
+
+                if (state.paper.orientation === 'landscape') {
+                    els.paperWidth.value = h;
+                    els.paperHeight.value = w;
+                } else {
+                    els.paperWidth.value = w;
+                    els.paperHeight.value = h;
+                }
+            }
+            updateState();
+        }
+
+
+        function toggleOrientation() {
+            state.paper.orientation = state.paper.orientation === 'portrait' ? 'landscape' : 'portrait';
+
+            // Swap width and height
+            const currentW = parseFloat(els.paperWidth.value);
+            const currentH = parseFloat(els.paperHeight.value);
+
+            els.paperWidth.value = currentH;
+            els.paperHeight.value = currentW;
+
+            updateState();
+        }
+
+        function autoLayout() {
+            const pW = parseFloat(els.paperWidth.value);
+            const pH = parseFloat(els.paperHeight.value);
+            const dW = parseFloat(els.designWidth.value);
+            const dH = parseFloat(els.designHeight.value);
+            const margin = parseFloat(els.gridMargin.value);
+
+            if (pW && pH && dW && dH) {
+                const usableW = pW - (margin * 2);
+                const usableH = pH - (margin * 2);
+
+                const cols = Math.floor(usableW / dW);
+                const rows = Math.floor(usableH / dH);
+
+                els.gridCols.value = Math.max(1, cols);
+                els.gridRows.value = Math.max(1, rows);
+                updateState();
+            }
+        }
+
+        function updateState() {
+            // Read values from DOM
+            state.paper.width = parseFloat(els.paperWidth.value) || 0;
+            state.paper.height = parseFloat(els.paperHeight.value) || 0;
+            state.design.width = parseFloat(els.designWidth.value) || 0;
+            state.design.height = parseFloat(els.designHeight.value) || 0;
+            state.grid.rows = parseInt(els.gridRows.value) || 1;
+            state.grid.cols = parseInt(els.gridCols.value) || 1;
+            state.grid.margin = parseFloat(els.gridMargin.value) || 0;
+
+            state.numbering.start = parseInt(els.numStart.value) || 1;
+            state.numbering.total = parseInt(els.numTotal.value) || 100;
+            state.numbering.prefix = els.numPrefix.value;
+            state.numbering.padding = parseInt(els.numPadding.value) || 0;
+            state.numbering.color = els.numColor.value;
+            state.numbering.fontSize = parseFloat(els.numFontSize.value) || 12;
+            state.numbering.font = els.numFont.value;
+            state.numbering.posX = parseFloat(els.numPosX.value) || 0;
+            state.numbering.posY = parseFloat(els.numPosY.value) || 0;
+            state.numbering.vertical = els.numVertical.checked;
+            state.numbering.double = els.numDouble.checked;
+            state.numbering.matrixX = parseFloat(els.numMatrixX.value) || 0;
+            state.numbering.matrixY = parseFloat(els.numMatrixY.value) || 0;
+            state.numbering.itemsPerTicket = parseInt(els.itemsPerTicket.value) || 1;
+            state.numbering.spacing = parseFloat(els.itemsSpacing.value) || 0;
+            state.numbering.pdfCorrectionY = parseFloat(els.pdfCorrectionY.value) || 0;
+            state.numbering.maxSheets = parseInt(els.numMaxSheets.value) || 0;
+            state.numbering.fill = els.numFill.checked;
+
+            // --- VALIDATION & LIMITS ---
+            // Calculate Max Rows/Cols
+            const usableW = state.paper.width - (state.grid.margin * 2);
+            const usableH = state.paper.height - (state.grid.margin * 2);
+            const maxCols = Math.floor(usableW / state.design.width);
+            const maxRows = Math.floor(usableH / state.design.height);
+
+            els.maxGridInfo.textContent = `Max posible: ${maxRows} x ${maxCols}`;
+
+            // Enforce Limits (Visual warning or clamp?)
+            // Let's clamp for safety if they exceed
+            if (state.grid.cols > maxCols && maxCols > 0) {
+                // els.gridCols.value = maxCols;
+                // state.grid.cols = maxCols;
+                els.gridCols.classList.add('border-red-500', 'text-red-500');
+            } else {
+                els.gridCols.classList.remove('border-red-500', 'text-red-500');
+            }
+
+            if (state.grid.rows > maxRows && maxRows > 0) {
+                // els.gridRows.value = maxRows;
+                // state.grid.rows = maxRows;
+                els.gridRows.classList.add('border-red-500', 'text-red-500');
+            } else {
+                els.gridRows.classList.remove('border-red-500', 'text-red-500');
+            }
+
+            // Calculations
+            const ticketsPerSheet = state.grid.rows * state.grid.cols;
+            const itemsPerTicket = state.numbering.itemsPerTicket;
+
+            // Requested Total
+            const requestedTotal = state.numbering.total;
+
+            // Total items per sheet
+            const totalItemsPerSheet = ticketsPerSheet * itemsPerTicket;
+
+            // Calculate required sheets
+            const requiredSheets = Math.ceil(requestedTotal / totalItemsPerSheet);
+
+            // Apply Max Sheets Limit
+            let actualSheets = requiredSheets;
+            let isLimited = false;
+            if (state.numbering.maxSheets > 0 && state.numbering.maxSheets < requiredSheets) {
+                actualSheets = state.numbering.maxSheets;
+                isLimited = true;
+            }
+
+            // Real totals
+            const realTotalTickets = actualSheets * ticketsPerSheet;
+            // const realTotalItems = actualSheets * totalItemsPerSheet;
+
+            els.itemsPerSheetInfo.textContent = `${ticketsPerSheet} etiquetas/pliego`;
+
+            if (isLimited) {
+                const missing = requestedTotal - (actualSheets * totalItemsPerSheet);
+                // Ensure missing is not negative (though logic prevents it)
+                const missingText = missing > 0 ? `Faltan: ${missing}` : 'Completo';
+                els.sheetCountInfo.innerHTML = `<span class="text-brand-400 font-bold">${actualSheets} pliegos</span> (Límite). <br>Generados: ${realTotalTickets}. ${missingText}`;
+            } else {
+                els.sheetCountInfo.textContent = `${actualSheets} pliegos (${realTotalTickets} papeletas)`;
+            }
+
+            renderPreview();
+        }
+
+        // --- RENDERER ---
+        function renderPreview() {
+            const ctx = els.previewCanvas.getContext('2d');
+
+            const scale = 2; // Preview quality
+            const mmToPx = (mm) => mm * 3.7795 * scale;
+
+            const pW = mmToPx(state.paper.width);
+            const pH = mmToPx(state.paper.height);
+
+            els.previewCanvas.width = pW;
+            els.previewCanvas.height = pH;
+
+            const containerH = document.getElementById('canvasContainer').clientHeight - 64;
+            // Scale canvas CSS to fit container while maintaining aspect ratio
+            const aspect = pW / pH;
+            let cssH = containerH;
+            let cssW = cssH * aspect;
+
+            els.previewCanvas.style.height = `${cssH}px`;
+            els.previewCanvas.style.width = `${cssW}px`;
+
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, pW, pH);
+
+            if (!state.file && !state.fileData) {
+                drawGuides(ctx, pW, pH, mmToPx(state.grid.margin));
+                return;
+            }
+
+            // Auto-Centering Logic
+            const cellW = mmToPx(state.design.width);
+            const cellH = mmToPx(state.design.height);
+
+            const gridTotalW = cellW * state.grid.cols;
+            const gridTotalH = cellH * state.grid.rows;
+
+            const startX = (pW - gridTotalW) / 2;
+            const startY = (pH - gridTotalH) / 2;
+
+            if (state.previewImage) {
+                drawGrid(ctx, state.previewImage, startX, startY, cellW, cellH, mmToPx, pW, pH);
+            } else {
+                drawGrid(ctx, null, startX, startY, cellW, cellH, mmToPx, pW, pH);
+            }
+        }
+
+        function drawGrid(ctx, img, startX, startY, cellW, cellH, mmToPx, pW, pH) {
+            const scale = 2;
+            const margin = mmToPx(state.grid.margin); // For guides only
+
+            for (let r = 0; r < state.grid.rows; r++) {
+                for (let c = 0; c < state.grid.cols; c++) {
+                    const x = startX + (c * cellW);
+                    const y = startY + (r * cellH);
+
+                    if (img) {
+                        ctx.drawImage(img, x, y, cellW, cellH);
+                    } else {
+                        ctx.strokeStyle = '#e2e8f0';
+                        ctx.lineWidth = 2 * scale;
+                        ctx.strokeRect(x, y, cellW, cellH);
+
+                        // Cross for placeholder
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + cellW, y + cellH);
+                        ctx.moveTo(x + cellW, y);
+                        ctx.lineTo(x, y + cellH);
+                        ctx.stroke();
+                    }
+
+                    drawNumberPlaceholder(ctx, x, y, cellW, cellH, r, c, mmToPx);
+                }
+            }
+
+            drawGuides(ctx, pW, pH, margin);
+        }
+
+        function drawGuides(ctx, pW, pH, margin) {
+            // Draw margin guide (the minimum safe area)
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 10]);
+            ctx.strokeRect(margin, margin, pW - margin * 2, pH - margin * 2);
+            ctx.setLineDash([]);
+        }
+
+        function drawNumberPlaceholder(ctx, x, y, w, h, r, c, mmToPx) {
+            // Correct Font Size Calculation for Canvas (Points to Pixels)
+            // 1 pt = 1.333 px at 96 DPI.
+            // Scale factor is 2.
+            const fontSizePx = state.numbering.fontSize * (96 / 72) * 2;
+
+            // Map font selection to CSS font family
+            let fontFamily = 'Arial, sans-serif';
+            if (state.numbering.font === 'Times') fontFamily = '"Times New Roman", serif';
+            if (state.numbering.font === 'Courier') fontFamily = '"Courier New", monospace';
+
+            ctx.font = `bold ${fontSizePx}px ${fontFamily}`;
+            ctx.fillStyle = state.numbering.color;
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'top';
+
+            const offsetX = mmToPx(state.numbering.posX);
+            const offsetY = mmToPx(state.numbering.posY);
+            const spacing = mmToPx(state.numbering.spacing);
+
+            const startX = x + w - offsetX;
+            const startY = y + offsetY;
+
+            // Simulate numbers for preview
+            const ticketsPerSheet = state.grid.rows * state.grid.cols;
+            const itemsPerTicket = state.numbering.itemsPerTicket;
+
+            // Calculate sheets
+            const requiredSheets = Math.ceil(state.numbering.total / (ticketsPerSheet * itemsPerTicket));
+            let totalSheets = requiredSheets;
+            if (state.numbering.maxSheets > 0 && state.numbering.maxSheets < requiredSheets) {
+                totalSheets = state.numbering.maxSheets;
+            }
+
+            // Calculate real total to match PDF logic
+            const realTotal = totalSheets * (ticketsPerSheet * itemsPerTicket);
+
+            // Stack Index (Row-Major)
+            const stackIndex = (r * state.grid.cols) + c;
+            const itemsPerStack = totalSheets * itemsPerTicket;
+            const stackStartVal = state.numbering.start + (stackIndex * itemsPerStack);
+
+            let sampleParts = [];
+            for (let i = 0; i < itemsPerTicket; i++) {
+                // Just show the first number of the stack for preview simplicity
+                // Or show a representative number
+                const val = stackStartVal;
+
+                const limit = state.numbering.fill ? (state.numbering.start + realTotal) : (state.numbering.start + state.numbering.total);
+
+                if (val < limit) {
+                    sampleParts.push(`${state.numbering.prefix}${val.toString().padStart(state.numbering.padding, '0')}`);
+                }
+            }
+
+            const drawStack = (originX, originY) => {
+                for (let i = 0; i < sampleParts.length; i++) {
+                    ctx.save();
+
+                    let itemX, itemY;
+                    if (state.numbering.vertical) {
+                        // Vertical: Stack to the LEFT
+                        itemX = originX - (i * spacing);
+                        itemY = originY;
+                    } else {
+                        // Horizontal: Stack DOWN
+                        itemX = originX;
+                        itemY = originY + (i * spacing);
+                    }
+
+                    ctx.translate(itemX, itemY);
+                    if (state.numbering.vertical) {
+                        ctx.rotate(Math.PI / 2); // Rotate 90 deg clockwise
+                    }
+                    ctx.fillText(sampleParts[i], 0, 0);
+                    ctx.restore();
+                }
+            };
+
+            drawStack(startX, startY);
+
+            if (state.numbering.double) {
+                const matrixOffsetX = mmToPx(state.numbering.matrixX);
+                const matrixOffsetY = mmToPx(state.numbering.matrixY);
+
+                const matrixX = x + w - matrixOffsetX;
+                const matrixY = y + matrixOffsetY;
+
+                drawStack(matrixX, matrixY);
+            }
+        }
+
+        // --- PDF GENERATION ---
+        async function generatePDF() {
+            if (!state.fileData && state.fileType !== 'pdf') {
+                // Allow generating without background if just testing? No, usually need design.
+                // But maybe they just want numbers? Let's warn but allow if they confirm?
+                // For now, strict.
+                if (!confirm("No has cargado un archivo de diseño. ¿Generar solo números?")) return;
+            }
+
+            els.generateBtn.disabled = true;
+            els.generateBtn.innerHTML = 'Generando...';
+
+            try {
+                const { PDFDocument, rgb, StandardFonts, degrees } = PDFLib;
+                const pdfDoc = await PDFDocument.create();
+
+                // Embed selected font
+                let font;
+                if (state.numbering.font === 'Times') {
+                    font = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+                } else if (state.numbering.font === 'Courier') {
+                    font = await pdfDoc.embedFont(StandardFonts.CourierBold);
+                } else {
+                    font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                }
+
+                let embeddedImage;
+                let embeddedPage;
+
+                if (state.fileData) {
+                    if (state.fileType === 'image') {
+                        if (state.file.type === 'image/png') {
+                            embeddedImage = await pdfDoc.embedPng(state.fileData);
+                        } else {
+                            embeddedImage = await pdfDoc.embedJpg(state.fileData);
+                        }
+                    } else if (state.fileType === 'pdf') {
+                        // Embed PDF page
+                        const sourcePdf = await PDFDocument.load(state.fileData);
+                        const [firstPage] = await pdfDoc.embedPdf(sourcePdf, [0]);
+                        embeddedPage = firstPage;
+                    }
+                }
+
+                const ticketsPerSheet = state.grid.rows * state.grid.cols;
+                const itemsPerTicket = state.numbering.itemsPerTicket;
+                const totalItemsPerSheet = ticketsPerSheet * itemsPerTicket;
+
+                const requiredSheets = Math.ceil(state.numbering.total / totalItemsPerSheet);
+                let totalSheets = requiredSheets;
+                if (state.numbering.maxSheets > 0 && state.numbering.maxSheets < requiredSheets) {
+                    totalSheets = state.numbering.maxSheets;
+                }
+
+                // Real Total to fill all sheets (Cut & Stack requirement)
+                const realTotal = totalSheets * totalItemsPerSheet;
+
+                const mmToPt = (mm) => mm * 2.83465;
+                const pageWidth = mmToPt(state.paper.width);
+                const pageHeight = mmToPt(state.paper.height);
+                const pdfCorrectionY = mmToPt(state.numbering.pdfCorrectionY || 0);
+
+                // Auto-Centering Logic for PDF
+                const cellW = mmToPt(state.design.width);
+                const cellH = mmToPt(state.design.height);
+
+                const gridTotalW = cellW * state.grid.cols;
+                const gridTotalH = cellH * state.grid.rows;
+
+                const startX = (pageWidth - gridTotalW) / 2;
+                const startY = (pageHeight - gridTotalH) / 2;
+
+                const itemsPerStack = totalSheets * itemsPerTicket;
+
+                for (let s = 0; s < totalSheets; s++) {
+                    const page = pdfDoc.addPage([pageWidth, pageHeight]);
+
+                    for (let r = 0; r < state.grid.rows; r++) {
+                        for (let c = 0; c < state.grid.cols; c++) {
+
+                            // PDF Coordinates: Bottom-Left is (0,0)
+                            // We calculate from Top-Left to match HTML logic, then flip Y
+
+                            // HTML Grid Top-Left: startX, startY
+                            // HTML Cell Top-Left: startX + c*cellW, startY + r*cellH
+
+                            // PDF X = HTML X
+                            // PDF Y = PageHeight - (HTML Y + CellHeight)  <-- To align top of cell?
+                            // No, drawImage uses x,y as bottom-left of image.
+                            // So PDF Y = PageHeight - (HTML Y + CellHeight) is correct for bottom-left of cell.
+                            // HTML Y = startY + (r * cellH)
+
+                            const x = startX + (c * cellW);
+                            const topY = startY + (r * cellH); // Distance from top
+                            const y = pageHeight - topY - cellH; // Bottom-left Y
+
+                            if (embeddedImage) {
+                                page.drawImage(embeddedImage, {
+                                    x: x,
+                                    y: y,
+                                    width: cellW,
+                                    height: cellH
+                                });
+                            } else if (embeddedPage) {
+                                page.drawPage(embeddedPage, {
+                                    x: x,
+                                    y: y,
+                                    width: cellW,
+                                    height: cellH
+                                });
+                            }
+
+                            // Numbering
+                            const stackIndex = (r * state.grid.cols) + c;
+                            const stackStartVal = state.numbering.start + (stackIndex * itemsPerStack);
+
+                            let numParts = [];
+                            for (let i = 0; i < itemsPerTicket; i++) {
+                                const val = stackStartVal + (i * totalSheets) + s;
+
+                                // FILL LOGIC: Use realTotal if fill is true, else use requested total
+                                const limit = state.numbering.fill ? (state.numbering.start + realTotal) : (state.numbering.start + state.numbering.total);
+
+                                if (val < limit) {
+                                    numParts.push(`${state.numbering.prefix}${val.toString().padStart(state.numbering.padding, '0')}`);
+                                }
+                            }
+
+                            if (numParts.length > 0) {
+                                const offsetX = mmToPt(state.numbering.posX);
+                                const offsetY = mmToPt(state.numbering.posY);
+                                const spacing = mmToPt(state.numbering.spacing);
+                                const fontSize = state.numbering.fontSize;
+
+                                const hex = state.numbering.color.replace('#', '');
+                                const rCol = parseInt(hex.substring(0, 2), 16) / 255;
+                                const gCol = parseInt(hex.substring(2, 4), 16) / 255;
+                                const bCol = parseInt(hex.substring(4, 6), 16) / 255;
+                                const color = rgb(rCol, gCol, bCol);
+
+                                const drawStack = (baseX, baseY) => {
+                                    numParts.forEach((text, i) => {
+                                        const textWidth = font.widthOfTextAtSize(text, fontSize);
+                                        const baselineOffset = fontSize * 0.85;
+
+                                        let drawX, drawY;
+                                        let rotation = degrees(0);
+
+                                        if (state.numbering.vertical) {
+                                            rotation = degrees(-90);
+                                            // Vertical: Stack Left
+                                            // Anchor X: (x + cellW) - offsetX - (i * spacing)
+                                            // Anchor Y: (pageHeight - topY) - offsetY
+
+                                            // Fix 1: Match Canvas 'Right Align' + Rotation
+                                            // Canvas flows text UP from anchor. PDF flows DOWN.
+                                            // Shift PDF Y UP by textWidth so it ends at the anchor.
+
+                                            // Fix 2: Match Canvas 'Top Baseline' + Rotation
+                                            // Canvas text extends LEFT of anchor. PDF extends RIGHT (Ascenders).
+                                            // Shift PDF X LEFT by Ascender Height (baselineOffset).
+
+                                            drawX = (x + cellW) - offsetX - (i * spacing) - baselineOffset;
+                                            drawY = (pageHeight - topY) - offsetY + textWidth + pdfCorrectionY;
+                                        } else {
+                                            // Horizontal: Stack Down
+                                            drawX = (x + cellW) - offsetX - textWidth;
+                                            drawY = (pageHeight - topY) - offsetY - baselineOffset - (i * spacing) + pdfCorrectionY;
+                                        }
+
+                                        page.drawText(text, {
+                                            x: drawX,
+                                            y: drawY,
+                                            size: fontSize,
+                                            font: font,
+                                            color: color,
+                                            rotate: rotation
+                                        });
+                                    });
+                                };
+
+                                drawStack();
+
+                                if (state.numbering.double) {
+                                    const matrixOffsetX = mmToPt(state.numbering.matrixX);
+                                    const matrixOffsetY = mmToPt(state.numbering.matrixY);
+
+                                    numParts.forEach((text, i) => {
+                                        const textWidth = font.widthOfTextAtSize(text, fontSize);
+                                        const baselineOffset = fontSize * 0.85;
+
+                                        let drawX, drawY;
+                                        let rotation = degrees(0);
+
+                                        if (state.numbering.vertical) {
+                                            rotation = degrees(-90);
+                                            drawX = (x + cellW) - matrixOffsetX - (i * spacing) - baselineOffset;
+                                            drawY = (pageHeight - topY) - matrixOffsetY + textWidth + pdfCorrectionY;
+                                        } else {
+                                            drawX = (x + cellW) - matrixOffsetX - textWidth;
+                                            drawY = (pageHeight - topY) - matrixOffsetY - baselineOffset - (i * spacing) + pdfCorrectionY;
+                                        }
+
+                                        page.drawText(text, {
+                                            x: drawX,
+                                            y: drawY,
+                                            size: fontSize,
+                                            font: font,
+                                            color: color,
+                                            rotate: rotation
+                                        });
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                const pdfBytes = await pdfDoc.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `numerado_${Date.now()}.pdf`;
+                link.click();
+
+            } catch (err) {
+                console.error(err);
+                alert('Error generando PDF: ' + err.message);
+            } finally {
+                els.generateBtn.disabled = false;
+                els.generateBtn.innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4">
+                        </path>
+                    </svg>
+                    Generar PDF
+                    `;
+            }
+        }
+
+        // Start
+        init();
+
+    </script>
+</body>
+
+</html>
