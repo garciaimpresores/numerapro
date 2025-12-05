@@ -9,7 +9,7 @@
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://unpkg.com/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/utif@2.0.1/UTIF.js"></script>
+    <script src="https://unpkg.com/utif@3.1.0/UTIF.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
@@ -768,8 +768,17 @@
             if (fileType === 'image/tiff' || fileType === 'image/tif') {
                 try {
                     const ifds = UTIF.decode(buffer);
+                    if (!ifds || ifds.length === 0) {
+                        throw new Error("No se encontraron páginas en el archivo TIFF.");
+                    }
+
                     UTIF.decodeImage(buffer, ifds[0]);
                     const rgba = UTIF.toRGBA8(ifds[0]);
+
+                    if (!rgba) {
+                        throw new Error("No se pudo decodificar la imagen TIFF.");
+                    }
+
                     const width = ifds[0].width;
                     const height = ifds[0].height;
 
@@ -789,7 +798,7 @@
 
                 } catch (e) {
                     console.error("Error processing TIFF", e);
-                    alert("Error al procesar archivo TIFF.");
+                    alert("Error al procesar archivo TIFF: " + e.message);
                 }
             } else {
                 // Standard Image (JPG/PNG)
@@ -1261,7 +1270,33 @@
 
                 if (state.fileData) {
                     if (state.fileType === 'image') {
-                        if (state.file.type === 'image/png') {
+                        let isPng = false;
+
+                        // Robust detection: Check File Data Signature
+                        if (typeof state.fileData === 'string') {
+                            // Check Data URL
+                            if (state.fileData.startsWith('data:image/png')) {
+                                isPng = true;
+                            }
+                        } else {
+                            // Check ArrayBuffer Magic Numbers
+                            const bytes = new Uint8Array(state.fileData);
+                            // PNG signature: 89 50 4E 47 0D 0A 1A 0A
+                            if (bytes.length > 7 &&
+                                bytes[0] === 0x89 &&
+                                bytes[1] === 0x50 &&
+                                bytes[2] === 0x4E &&
+                                bytes[3] === 0x47) {
+                                isPng = true;
+                            }
+                        }
+
+                        // Fallback: Check original file type object if it exists (for fresh loads)
+                        if (state.file && state.file.type === 'image/png') {
+                            isPng = true;
+                        }
+
+                        if (isPng) {
                             embeddedImage = await pdfDoc.embedPng(state.fileData);
                         } else {
                             embeddedImage = await pdfDoc.embedJpg(state.fileData);
